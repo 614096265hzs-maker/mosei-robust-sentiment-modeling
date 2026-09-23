@@ -1,0 +1,11 @@
+{
+  "status": "valid_design",
+  "pilot_runs": 8,
+  "core_runs": 36,
+  "total_training_runs": 44,
+  "condition_rows": 240,
+  "main_model_seed_conditions": 3060,
+  "main_test_sample_forwards": 2224620,
+  "random_test_sample_forwards": 1221360,
+  "models_trained_by_this_script": 0
+}

@@ -1,0 +1,44 @@
+{"run_id": "P01_F21_s7", "stage": "pilot", "model": "F21", "seed": 7, "hidden_dim": 64, "learning_rate": 0.0003, "dropout": 0.1, "dependencies": ["interface_verified", "Q0_passed"], "status": "planned"}
+{"run_id": "P02_F21_s7", "stage": "pilot", "model": "F21", "seed": 7, "hidden_dim": 64, "learning_rate": 0.0003, "dropout": 0.3, "dependencies": ["interface_verified", "Q0_passed"], "status": "planned"}
+{"run_id": "P03_F21_s7", "stage": "pilot", "model": "F21", "seed": 7, "hidden_dim": 64, "learning_rate": 0.001, "dropout": 0.1, "dependencies": ["interface_verified", "Q0_passed"], "status": "planned"}
+{"run_id": "P04_F21_s7", "stage": "pilot", "model": "F21", "seed": 7, "hidden_dim": 64, "learning_rate": 0.001, "dropout": 0.3, "dependencies": ["interface_verified", "Q0_passed"], "status": "planned"}
+{"run_id": "P05_F21_s7", "stage": "pilot", "model": "F21", "seed": 7, "hidden_dim": 128, "learning_rate": 0.0003, "dropout": 0.1, "dependencies": ["interface_verified", "Q0_passed"], "status": "planned"}
+{"run_id": "P06_F21_s7", "stage": "pilot", "model": "F21", "seed": 7, "hidden_dim": 128, "learning_rate": 0.0003, "dropout": 0.3, "dependencies": ["interface_verified", "Q0_passed"], "status": "planned"}
+{"run_id": "P07_F21_s7", "stage": "pilot", "model": "F21", "seed": 7, "hidden_dim": 128, "learning_rate": 0.001, "dropout": 0.1, "dependencies": ["interface_verified", "Q0_passed"], "status": "planned"}
+{"run_id": "P08_F21_s7", "stage": "pilot", "model": "F21", "seed": 7, "hidden_dim": 128, "learning_rate": 0.001, "dropout": 0.3, "dependencies": ["interface_verified", "Q0_passed"], "status": "planned"}
+{"run_id": "C_B1_s17", "stage": "core", "model": "B1", "seed": 17, "hyperparameters": "selected_shared.json_not_yet_created", "dependencies": ["shared_hyperparameters_locked"], "status": "planned"}
+{"run_id": "C_B1_s29", "stage": "core", "model": "B1", "seed": 29, "hyperparameters": "selected_shared.json_not_yet_created", "dependencies": ["shared_hyperparameters_locked"], "status": "planned"}
+{"run_id": "C_B1_s43", "stage": "core", "model": "B1", "seed": 43, "hyperparameters": "selected_shared.json_not_yet_created", "dependencies": ["shared_hyperparameters_locked"], "status": "planned"}
+{"run_id": "C_B2_s17", "stage": "core", "model": "B2", "seed": 17, "hyperparameters": "selected_shared.json_not_yet_created", "dependencies": ["shared_hyperparameters_locked"], "status": "planned"}
+{"run_id": "C_B2_s29", "stage": "core", "model": "B2", "seed": 29, "hyperparameters": "selected_shared.json_not_yet_created", "dependencies": ["shared_hyperparameters_locked"], "status": "planned"}
+{"run_id": "C_B2_s43", "stage": "core", "model": "B2", "seed": 43, "hyperparameters": "selected_shared.json_not_yet_created", "dependencies": ["shared_hyperparameters_locked"], "status": "planned"}
+{"run_id": "C_B3_s17", "stage": "core", "model": "B3", "seed": 17, "hyperparameters": "selected_shared.json_not_yet_created", "dependencies": ["shared_hyperparameters_locked"], "status": "planned"}
+{"run_id": "C_B3_s29", "stage": "core", "model": "B3", "seed": 29, "hyperparameters": "selected_shared.json_not_yet_created", "dependencies": ["shared_hyperparameters_locked"], "status": "planned"}
+{"run_id": "C_B3_s43", "stage": "core", "model": "B3", "seed": 43, "hyperparameters": "selected_shared.json_not_yet_created", "dependencies": ["shared_hyperparameters_locked"], "status": "planned"}
+{"run_id": "C_B4_s17", "stage": "core", "model": "B4", "seed": 17, "hyperparameters": "selected_shared.json_not_yet_created", "dependencies": ["shared_hyperparameters_locked"], "status": "planned"}
+{"run_id": "C_B4_s29", "stage": "core", "model": "B4", "seed": 29, "hyperparameters": "selected_shared.json_not_yet_created", "dependencies": ["shared_hyperparameters_locked"], "status": "planned"}
+{"run_id": "C_B4_s43", "stage": "core", "model": "B4", "seed": 43, "hyperparameters": "selected_shared.json_not_yet_created", "dependencies": ["shared_hyperparameters_locked"], "status": "planned"}
+{"run_id": "C_B5_s17", "stage": "core", "model": "B5", "seed": 17, "hyperparameters": "selected_shared.json_not_yet_created", "dependencies": ["shared_hyperparameters_locked"], "status": "planned"}
+{"run_id": "C_B5_s29", "stage": "core", "model": "B5", "seed": 29, "hyperparameters": "selected_shared.json_not_yet_created", "dependencies": ["shared_hyperparameters_locked"], "status": "planned"}
+{"run_id": "C_B5_s43", "stage": "core", "model": "B5", "seed": 43, "hyperparameters": "selected_shared.json_not_yet_created", "dependencies": ["shared_hyperparameters_locked"], "status": "planned"}
+{"run_id": "C_F00_s17", "stage": "core", "model": "F00", "seed": 17, "hyperparameters": "selected_shared.json_not_yet_created", "dependencies": ["shared_hyperparameters_locked"], "status": "planned"}
+{"run_id": "C_F00_s29", "stage": "core", "model": "F00", "seed": 29, "hyperparameters": "selected_shared.json_not_yet_created", "dependencies": ["shared_hyperparameters_locked"], "status": "planned"}
+{"run_id": "C_F00_s43", "stage": "core", "model": "F00", "seed": 43, "hyperparameters": "selected_shared.json_not_yet_created", "dependencies": ["shared_hyperparameters_locked"], "status": "planned"}
+{"run_id": "C_F01_s17", "stage": "core", "model": "F01", "seed": 17, "hyperparameters": "selected_shared.json_not_yet_created", "dependencies": ["shared_hyperparameters_locked"], "status": "planned"}
+{"run_id": "C_F01_s29", "stage": "core", "model": "F01", "seed": 29, "hyperparameters": "selected_shared.json_not_yet_created", "dependencies": ["shared_hyperparameters_locked"], "status": "planned"}
+{"run_id": "C_F01_s43", "stage": "core", "model": "F01", "seed": 43, "hyperparameters": "selected_shared.json_not_yet_created", "dependencies": ["shared_hyperparameters_locked"], "status": "planned"}
+{"run_id": "C_F10_s17", "stage": "core", "model": "F10", "seed": 17, "hyperparameters": "selected_shared.json_not_yet_created", "dependencies": ["shared_hyperparameters_locked"], "status": "planned"}
+{"run_id": "C_F10_s29", "stage": "core", "model": "F10", "seed": 29, "hyperparameters": "selected_shared.json_not_yet_created", "dependencies": ["shared_hyperparameters_locked"], "status": "planned"}
+{"run_id": "C_F10_s43", "stage": "core", "model": "F10", "seed": 43, "hyperparameters": "selected_shared.json_not_yet_created", "dependencies": ["shared_hyperparameters_locked"], "status": "planned"}
+{"run_id": "C_F11_s17", "stage": "core", "model": "F11", "seed": 17, "hyperparameters": "selected_shared.json_not_yet_created", "dependencies": ["shared_hyperparameters_locked"], "status": "planned"}
+{"run_id": "C_F11_s29", "stage": "core", "model": "F11", "seed": 29, "hyperparameters": "selected_shared.json_not_yet_created", "dependencies": ["shared_hyperparameters_locked"], "status": "planned"}
+{"run_id": "C_F11_s43", "stage": "core", "model": "F11", "seed": 43, "hyperparameters": "selected_shared.json_not_yet_created", "dependencies": ["shared_hyperparameters_locked"], "status": "planned"}
+{"run_id": "C_F20_s17", "stage": "core", "model": "F20", "seed": 17, "hyperparameters": "selected_shared.json_not_yet_created", "dependencies": ["shared_hyperparameters_locked"], "status": "planned"}
+{"run_id": "C_F20_s29", "stage": "core", "model": "F20", "seed": 29, "hyperparameters": "selected_shared.json_not_yet_created", "dependencies": ["shared_hyperparameters_locked"], "status": "planned"}
+{"run_id": "C_F20_s43", "stage": "core", "model": "F20", "seed": 43, "hyperparameters": "selected_shared.json_not_yet_created", "dependencies": ["shared_hyperparameters_locked"], "status": "planned"}
+{"run_id": "C_F21_s17", "stage": "core", "model": "F21", "seed": 17, "hyperparameters": "selected_shared.json_not_yet_created", "dependencies": ["shared_hyperparameters_locked"], "status": "planned"}
+{"run_id": "C_F21_s29", "stage": "core", "model": "F21", "seed": 29, "hyperparameters": "selected_shared.json_not_yet_created", "dependencies": ["shared_hyperparameters_locked"], "status": "planned"}
+{"run_id": "C_F21_s43", "stage": "core", "model": "F21", "seed": 43, "hyperparameters": "selected_shared.json_not_yet_created", "dependencies": ["shared_hyperparameters_locked"], "status": "planned"}
+{"run_id": "C_D1_s17", "stage": "core", "model": "D1", "seed": 17, "hyperparameters": "selected_shared.json_not_yet_created", "dependencies": ["shared_hyperparameters_locked", "C_F01_s17"], "status": "planned"}
+{"run_id": "C_D1_s29", "stage": "core", "model": "D1", "seed": 29, "hyperparameters": "selected_shared.json_not_yet_created", "dependencies": ["shared_hyperparameters_locked", "C_F01_s29"], "status": "planned"}
+{"run_id": "C_D1_s43", "stage": "core", "model": "D1", "seed": 43, "hyperparameters": "selected_shared.json_not_yet_created", "dependencies": ["shared_hyperparameters_locked", "C_F01_s43"], "status": "planned"}

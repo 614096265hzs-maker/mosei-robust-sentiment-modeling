@@ -1,0 +1,14 @@
+# Competition inputs and generated outputs stay local.
+E题数据/
+outputs/
+*.pkl
+*.pt
+*.pth
+*.safetensors
+*.npz
+*.csv.gz
+__pycache__/
+*.py[cod]
+.venv/
+.env
+

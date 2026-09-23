@@ -1,0 +1,364 @@
+{
+  "version": "1.0",
+  "status": "design_only_not_executed",
+  "root_relative_to_this_directory": "..",
+  "data": {
+    "aligned_path": "E题数据/附件2-数据集特征文件/aligned_50.pkl",
+    "split_sizes": {
+      "train": 3395,
+      "valid": 728,
+      "test": 727
+    },
+    "special_sizes": {
+      "attachment1": 100,
+      "attachment3": 30,
+      "attachment4": 20
+    },
+    "text_input": "text_bert",
+    "text_encoder_frozen": true,
+    "encoder_identity": null,
+    "tokenizer_identity": null,
+    "require_verified_encoder_before_final_training": true,
+    "normalize_fit_split": "train",
+    "std_floor": 1e-06,
+    "float_dtype": "float32",
+    "token_dtype": "int64",
+    "zero_row_policy": "raw_exact_zero_as_operationally_unavailable_with_uncertainty_flag",
+    "preserve_all_samples": true,
+    "attachment4_test_overlap_ids": [
+      "03",
+      "07",
+      "08",
+      "12",
+      "15"
+    ]
+  },
+  "model": {
+    "hidden_dim": null,
+    "layers_per_modality": 2,
+    "attention_heads": 4,
+    "feedforward_multiplier": 4,
+    "activation": "GELU",
+    "dropout": null,
+    "head_hidden": 64,
+    "gate_hidden": 32,
+    "gate_quality_fields": [
+      "coverage",
+      "longest_unavailable_ratio",
+      "available"
+    ],
+    "empty_input_fallback": "train_class_prior_and_train_intensity_mean",
+    "models": [
+      {
+        "id": "B1",
+        "modalities": "T",
+        "temporal": true,
+        "fusion": "single",
+        "augmentation": "none"
+      },
+      {
+        "id": "B2",
+        "modalities": "A",
+        "temporal": true,
+        "fusion": "single",
+        "augmentation": "none"
+      },
+      {
+        "id": "B3",
+        "modalities": "V",
+        "temporal": true,
+        "fusion": "single",
+        "augmentation": "none"
+      },
+      {
+        "id": "B4",
+        "modalities": "TAV",
+        "temporal": false,
+        "fusion": "concat",
+        "augmentation": "none"
+      },
+      {
+        "id": "B5",
+        "modalities": "TAV",
+        "temporal": true,
+        "fusion": "concat",
+        "augmentation": "none"
+      },
+      {
+        "id": "F00",
+        "modalities": "TAV",
+        "temporal": true,
+        "fusion": "uniform",
+        "augmentation": "none"
+      },
+      {
+        "id": "F01",
+        "modalities": "TAV",
+        "temporal": true,
+        "fusion": "gate",
+        "augmentation": "none"
+      },
+      {
+        "id": "F10",
+        "modalities": "TAV",
+        "temporal": true,
+        "fusion": "uniform",
+        "augmentation": "iid_count_matched"
+      },
+      {
+        "id": "F11",
+        "modalities": "TAV",
+        "temporal": true,
+        "fusion": "gate",
+        "augmentation": "iid_count_matched"
+      },
+      {
+        "id": "F20",
+        "modalities": "TAV",
+        "temporal": true,
+        "fusion": "uniform",
+        "augmentation": "block"
+      },
+      {
+        "id": "F21",
+        "modalities": "TAV",
+        "temporal": true,
+        "fusion": "gate",
+        "augmentation": "block"
+      },
+      {
+        "id": "D1",
+        "modalities": "TAV",
+        "temporal": true,
+        "fusion": "gate",
+        "augmentation": "block",
+        "teacher": "F01_same_seed",
+        "distill_weight": 0.2
+      }
+    ]
+  },
+  "training": {
+    "optimizer": "AdamW",
+    "learning_rate": null,
+    "weight_decay": 0.0001,
+    "batch_size_effective": 32,
+    "max_epochs": 50,
+    "min_epochs": 10,
+    "early_stop_patience": 8,
+    "min_delta": 0.0001,
+    "gradient_clip_norm": 1.0,
+    "scheduler": "constant",
+    "seeds": [
+      17,
+      29,
+      43
+    ],
+    "pilot_seed": 7,
+    "class_weight": "inverse_sqrt_train_frequency_normalized_mean_one",
+    "weighted_sampling": false,
+    "huber_delta": 1.0,
+    "classification_weight": 1.0,
+    "regression_weight": 1.0,
+    "distillation": {
+      "weight": 0.2,
+      "temperature": 1.0,
+      "teacher": "frozen_eval_F01_same_seed",
+      "only_corrupted_samples": true,
+      "student_initialization": "same_seed_fresh_random",
+      "regression_distance_divisor": 6.0
+    }
+  },
+  "missingness": {
+    "primary_intervention": "feature_post_encoder",
+    "raw_text_claim_allowed": false,
+    "clean_probability": 0.3,
+    "augmentation_probability": 0.7,
+    "modality_combinations": [
+      "T",
+      "A",
+      "V",
+      "TA",
+      "TV",
+      "AV",
+      "TAV"
+    ],
+    "rates_nominal": [
+      0.1,
+      0.3,
+      0.5,
+      0.7
+    ],
+    "train_position_probabilities": {
+      "start": 0.25,
+      "middle": 0.25,
+      "end": 0.25,
+      "random": 0.25
+    },
+    "window_length": "min(L,max(1,ceil(rate*L)))",
+    "coordinate": "ordered_body_tokens_excluding_special_and_padding",
+    "multi_modal_window": "synchronous_shared_coordinate",
+    "iid_control": "same_actual_removed_count_per_modality_as_latent_block",
+    "report_nominal_and_realized_rates": true,
+    "rng_train_key": [
+      "training_seed",
+      "epoch",
+      "sample_id"
+    ],
+    "rng_eval_key": [
+      "mask_seed",
+      "split",
+      "sample_id",
+      "condition_id"
+    ],
+    "exclude_model_id_from_eval_rng": true
+  },
+  "evaluation": {
+    "selection_suite": "V-select",
+    "selection_split": "valid",
+    "selection_formula": "0.5*S_clean+0.5*mean(S_corrupt), S_c=0.5*macro_f1+0.5*(1-mae/6)",
+    "primary_suite": "E-main",
+    "random_suite": "E-random",
+    "random_suite_models": [
+      "F11",
+      "F20",
+      "F21",
+      "D1"
+    ],
+    "random_window_seeds": [
+      101,
+      211,
+      307,
+      401,
+      503
+    ],
+    "core_counts": {
+      "selection_conditions": 15,
+      "main_conditions": 85,
+      "random_conditions": 140,
+      "pilot_runs": 8,
+      "core_runs": 36
+    },
+    "metrics": [
+      "accuracy",
+      "macro_f1",
+      "mae",
+      "pearson_r"
+    ],
+    "fixed_class_labels": [
+      0,
+      1,
+      2
+    ],
+    "undefined_pearson": null,
+    "aggregate_conditions": "equal_weight_per_condition_after_metric_computation",
+    "clean_tolerance_macro_f1_drop": 0.02,
+    "clean_tolerance_mae_increase": 0.1,
+    "tolerance_reference_model": "F00",
+    "submission_seed_rule": "median_validation_selection_score_of_selected_model",
+    "test_access": "only_after_protocol_and_model_and_explanation_settings_lock"
+  },
+  "statistics": {
+    "primary_comparisons": [
+      [
+        "F21",
+        "F11"
+      ],
+      [
+        "F21",
+        "F20"
+      ],
+      [
+        "D1",
+        "F21"
+      ]
+    ],
+    "primary_endpoint": "equal_condition_mean_corrupted_macro_f1",
+    "bootstrap_replicates": 2000,
+    "cluster": "video_id",
+    "pair_models_seeds_conditions": true,
+    "ordinary_confidence": 0.95,
+    "simultaneous_confidence_for_three": 0.9833333333333333,
+    "seed_variability": "mean_and_sample_standard_deviation_separately"
+  },
+  "q1": {
+    "all_sample_count": 100,
+    "audit_count": 20,
+    "audit_seed": 20260923,
+    "duration_tertile_counts": [
+      7,
+      6,
+      7
+    ],
+    "development_audit_count": 5,
+    "held_out_quality_count": 15,
+    "methods": [
+      "uniform_word_intervals",
+      "forced_alignment"
+    ],
+    "boundary_tolerances_seconds": [
+      0.1,
+      0.2
+    ],
+    "metrics": [
+      "record_coverage",
+      "word_coverage",
+      "boundary_mae",
+      "interval_iou",
+      "boundary_within_tolerance",
+      "modality_availability",
+      "runtime"
+    ]
+  },
+  "explanation": {
+    "valid_local_subset": 120,
+    "test_local_subset": 120,
+    "per_class": 40,
+    "subset_seed": 20260923,
+    "attachment4_count": 20,
+    "window_candidates": [
+      1,
+      3,
+      5
+    ],
+    "default_window": 3,
+    "stride": 1,
+    "distance": "0.5*abs(delta_y)/6+0.5*JSD_natural_log/log(2)",
+    "contribution_zero_threshold": 1e-08,
+    "null_contribution_when_undetermined": true,
+    "methods": [
+      "occlusion_sensitivity",
+      "signed_class_support",
+      "random",
+      "feature_norm"
+    ],
+    "budget_fractions": [
+      0.0,
+      0.1,
+      0.2,
+      0.3,
+      0.5
+    ],
+    "random_repeats": 20,
+    "random_control": "match_modality_budget_segment_lengths_and_removed_count",
+    "noise_sigma_audio_vision": [
+      0.01,
+      0.05
+    ],
+    "noise_repeats": 5,
+    "stable_prediction_max_intensity_change": 0.1,
+    "top_fraction": 0.2,
+    "max_display_segments": 3,
+    "mapping_status_values": [
+      "verified",
+      "approximate",
+      "unavailable"
+    ]
+  },
+  "optional_training_runs": {
+    "pre_encoder_text_missingness": 9,
+    "zero_row_policy_sensitivity": 6,
+    "remove_gate_quality_statistics": 3,
+    "reconstruction": 3,
+    "single_task_comparison": 6
+  }
+}

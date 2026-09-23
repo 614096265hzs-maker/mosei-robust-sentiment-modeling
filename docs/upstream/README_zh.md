@@ -1,11 +1,5 @@
 <div align="center" markdown="1">
 
-# 本题适配版本：复杂场景下多模态情感识别
-
-本仓库已新增[建模题专用说明](README-modeling_zh.md)、`modeling/` 代码和 `protocol/` 实验协议。请从新说明开始使用。下方为原竞赛方案，仅作技术参考；原方案的跨语言分类结果、模型路径和运行命令不代表本题实验结果。原文另存于 [docs/upstream/README_zh.md](docs/upstream/README_zh.md)。
-
----
-
 # 跨语言多模态可解释情感识别模型（CLMER)
 </div>
 

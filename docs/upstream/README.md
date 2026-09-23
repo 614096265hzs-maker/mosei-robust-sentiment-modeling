@@ -1,12 +1,6 @@
 <div align="center" markdown="1">
 
-# Adapted project: Robust Multimodal Sentiment Modeling
-
-For this modeling problem, use [README-modeling.md](README-modeling.md), `modeling/`, and `protocol/`. The original cross-lingual classification project below is retained for reference and is archived at [docs/upstream/README.md](docs/upstream/README.md). Its reported scores do not describe the adapted experiment.
-
----
-
-# Cross-Lingual Multimodal Explainable Emotion Recognition (CLMER)
+# Cross-Lingual Multimodal Explainable Emotion Recognition (CLMER) 
 </div>
 
 <p align="center">
