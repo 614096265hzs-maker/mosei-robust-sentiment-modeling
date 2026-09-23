@@ -120,7 +120,7 @@ class MSERPredictor:
         # 重采样
         if audio_segment.sample_rate != self.configs.dataset_conf.dataset.sample_rate:
             audio_segment.resample(self.configs.dataset_conf.dataset.sample_rate)
-        # decibel normalization
+        # 分贝归一化
         if self.configs.dataset_conf.dataset.use_dB_normalization:
             audio_segment.normalize(target_db=self.configs.dataset_conf.dataset.target_dB)
         assert audio_segment.duration >= self.configs.dataset_conf.dataset.min_duration, \

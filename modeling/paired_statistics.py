@@ -1,8 +1,8 @@
-"""Video-cluster paired bootstrap for the three preregistered comparisons.
+"""对三项预先登记的比较执行视频聚类配对自助抽样。
 
-Requires locked E-main per-sample prediction files from run_protocol.py test.
-Each bootstrap draw resamples video IDs; it recomputes three-class Macro-F1 in
-each condition before taking equal-weight condition and seed means.
+需要 run_protocol.py test 生成的已锁定 E-main 逐样本预测文件。
+每次按视频编号重抽样，在每个条件下重新计算三分类 Macro-F1，
+然后对条件及随机种子取等权平均。
 """
 from __future__ import annotations
 
@@ -31,7 +31,7 @@ def macro_f1(confusion):
 
 
 def load_run(path):
-    # Store aggregated sufficient statistics, not a 727 x 84 long table in RAM.
+    # 只在内存中保存汇总统计量，避免构造 727×84 的长表。
     cells = defaultdict(lambda: [np.zeros((3, 3), dtype=np.int32), 0.0, 0])
     with gzip.open(path, "rt", newline="", encoding="utf-8") as handle:
         for row in csv.DictReader(handle):
@@ -61,7 +61,7 @@ def arrays(cells, conditions, videos):
 
 def evaluate(weights, stats):
     confusion, errors, counts = stats
-    # weights: [bootstrap, video], output metric: [bootstrap, condition]
+    # 权重形状：[自助抽样次数, 视频]；指标形状：[自助抽样次数, 条件]
     cm = np.einsum("bv,cvij->bcij", weights, confusion, optimize=True)
     err = np.einsum("bv,cv->bc", weights, errors, optimize=True)
     n = np.einsum("bv,cv->bc", weights, counts, optimize=True)
@@ -72,11 +72,11 @@ def evaluate(weights, stats):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--out", type=Path, default=ROOT / "outputs" / "official")
-    ap.add_argument("--replicates", type=int, default=2000)
+    ap.add_argument("--out", type=Path, default=ROOT / "outputs" / "official", help="已锁定结果目录")
+    ap.add_argument("--replicates", type=int, default=2000, help="自助抽样重复次数")
     args = ap.parse_args()
     lock = json.loads((args.out / "protocol_lock.json").read_text(encoding="utf-8"))
-    if lock["status"] != "locked_verified": raise ValueError("Requires verified, locked test results")
+    if lock["status"] != "locked_verified": raise ValueError("需要已核验且已锁定的测试结果")
     wanted = {model for _, a, b in PAIRS for model in (a, b)}
     records = defaultdict(dict); all_conditions = set(); all_videos = set()
     for run_id, rec in lock["all_valid_results"].items():
@@ -89,11 +89,11 @@ def main():
         all_videos.update(v for _, v in cells)
     seeds = (17, 29, 43)
     conditions = sorted(all_conditions); videos = sorted(all_videos)
-    if len(conditions) != 84: raise ValueError(f"Expected 84 corrupt conditions, found {len(conditions)}")
-    if not videos: raise ValueError("No video IDs")
+    if len(conditions) != 84: raise ValueError(f"预期 84 个缺失条件，实际为 {len(conditions)}")
+    if not videos: raise ValueError("没有视频编号")
     tensors = {}
     for model in wanted:
-        if set(records[model]) != set(seeds): raise ValueError(f"Incomplete seeds for {model}")
+        if set(records[model]) != set(seeds): raise ValueError(f"随机种子结果不完整： {model}")
         tensors[model] = {seed: arrays(records[model][seed], conditions, videos) for seed in seeds}
     rng = np.random.default_rng(20260923)
     draws = rng.integers(0, len(videos), size=(args.replicates, len(videos)))
@@ -108,7 +108,7 @@ def main():
         for seed in seeds:
             tf1, tmae = evaluate(actual, tensors[treatment][seed]); cf1, cmae = evaluate(actual, tensors[control][seed])
             observed_f1.append(float(tf1[0] - cf1[0])); observed_mae.append(float(tmae[0] - cmae[0]))
-            # Small chunks bound working memory for 2000 draws.
+            # 分块处理 2000 次重抽样，限制内存占用。
             for lo in range(0, args.replicates, 50):
                 w = weights[lo:lo + 50]
                 bf1, bmae = evaluate(w, tensors[treatment][seed])

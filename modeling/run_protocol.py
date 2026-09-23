@@ -1,7 +1,7 @@
-"""Execute the registered 8 + 36 training queue and locked test matrix.
+"""执行预先登记的 8＋36 次训练队列与锁定后的测试矩阵。
 
-Stages: pilot, core, select, test. `test` requires a verified text encoder.
-Runs are resumable: existing run JSON/checkpoints are checked and skipped.
+阶段：pilot、core、select、test。`test` 需要已核验的文本编码器。
+支持续跑：检查已有运行记录与检查点，通过后跳过。
 """
 from __future__ import annotations
 
@@ -26,10 +26,10 @@ def manifest():
 
 def verify_config(args):
     if args.source == "verified" and not args.text_cache:
-        raise ValueError("Verified route requires --text-cache")
+        raise ValueError("正式路线需要 --text-cache")
     args.out.mkdir(parents=True, exist_ok=True)
     if args.source == "precomputed" and args.out.resolve() == (ROOT / "outputs" / "official").resolve():
-        raise ValueError("Use a distinct --out directory for provisional precomputed runs")
+        raise ValueError("临时预计算实验必须使用独立的 --out 目录")
 
 
 def cached_run(args, row, data, norm, hidden, lr, dropout, teacher=None):
@@ -39,9 +39,9 @@ def cached_run(args, row, data, norm, hidden, lr, dropout, teacher=None):
         record = json.loads(run_path.read_text(encoding="utf-8"))
         if (record["model"] != row["model"] or record["seed"] != row["seed"] or record["source"] != args.source
                 or record["hidden_dim"] != hidden or record["learning_rate"] != lr or record["dropout"] != dropout):
-            raise ValueError(f"Existing run conflicts: {run_id}")
-        if not Path(record["checkpoint"]).exists(): raise ValueError(f"Missing checkpoint: {run_id}")
-        print(f"skip {run_id}", flush=True)
+            raise ValueError(f"已有运行记录冲突： {run_id}")
+        if not Path(record["checkpoint"]).exists(): raise ValueError(f"缺少检查点： {run_id}")
+        print(f"跳过 {run_id}", flush=True)
         return record
     return train_one(args, data, norm, row["model"], row["seed"], hidden, lr, dropout, run_id, teacher)
 
@@ -63,18 +63,18 @@ def run_pilot(args):
 
 def run_core(args):
     choice = json.loads((args.out / "pilot_choice.json").read_text(encoding="utf-8"))
-    if choice["source"] != args.source: raise ValueError("Pilot source mismatch")
+    if choice["source"] != args.source: raise ValueError("预搜索的数据来源不一致")
     data, norm = data_bundle(args.source, args.text_cache)
     save_norm(args.out, norm, args.source, args.text_cache)
     rows = [r for r in manifest() if r["stage"] != "pilot"]
-    # F01 must precede D1 for all paired seeds. The manifest is not assumed
-    # to be sorted in dependency order.
+    # 所有配对随机种子中，F01 必须先于 D1；不假设清单
+    # 已按依赖顺序排序。
     rows.sort(key=lambda r: (r["model"] == "D1", r["run_id"]))
     for row in rows:
         teacher = None
         if row["model"] == "D1":
             match = [r for r in rows if r["model"] == "F01" and r["seed"] == row["seed"]]
-            if len(match) != 1: raise ValueError(f"No unique F01 teacher for {row['run_id']}")
+            if len(match) != 1: raise ValueError(f"找不到唯一的 F01 教师模型： {row['run_id']}")
             teacher = args.out / "checkpoints" / f"{match[0]['run_id']}.pt"
         cached_run(args, row, data, norm, choice["hidden_dim"], choice["learning_rate"], choice["dropout"], teacher)
 
@@ -86,18 +86,18 @@ def run_select(args):
     valid = data["valid"]
     for row in rows:
         path = args.out / "runs" / f"{row['run_id']}.json"
-        if not path.exists(): raise ValueError(f"Incomplete core run: {path.name}")
+        if not path.exists(): raise ValueError(f"正式训练未完成： {path.name}")
         rec = json.loads(path.read_text(encoding="utf-8"))
         cp = Path(rec["checkpoint"])
         model, info = load_model(cp, norm, args.device)
-        if info["source"] != args.source: raise ValueError("Checkpoint source mismatch")
+        if info["source"] != args.source: raise ValueError("检查点的数据来源不一致")
         p, r, _, _ = predict(model, valid, read_conditions("V-select")[0], args.batch_size, args.device)
         results[row["run_id"]] = {"model": row["model"], "seed": row["seed"], "score": rec["best_score"],
                                   "clean": metric(valid.y_cls, valid.y_reg, p, r), "checkpoint": str(cp)}
     grouped = {}
     for rec in results.values(): grouped.setdefault(rec["model"], []).append(rec)
     for model_id, group in grouped.items():
-        if len(group) != 3: raise ValueError(f"Need 3 seeds for {model_id}")
+        if len(group) != 3: raise ValueError(f"需要 3 个随机种子： {model_id}")
     ref_f1 = np.mean([r["clean"]["macro_f1"] for r in grouped["F00"]])
     ref_mae = np.mean([r["clean"]["mae"] for r in grouped["F00"]])
     candidates = []
@@ -106,7 +106,7 @@ def run_select(args):
         f1 = np.mean([r["clean"]["macro_f1"] for r in group]); mae = np.mean([r["clean"]["mae"] for r in group])
         if model_id != "F00" and (f1 < ref_f1 - 0.02 or mae > ref_mae + 0.10): continue
         candidates.append((float(np.mean([r["score"] for r in group])), model_id))
-    if not candidates: raise ValueError("No qualifying model, including F00")
+    if not candidates: raise ValueError("包括 F00 在内，没有模型满足选型条件")
     candidates.sort(reverse=True)
     best_model = candidates[0][1]
     chosen = sorted(grouped[best_model], key=lambda r: r["score"])[1]
@@ -125,17 +125,17 @@ def run_select(args):
 
 
 def check_lock(args, lock):
-    if lock["status"] != "locked_verified": raise ValueError("Test requires a verified locked protocol")
-    if lock["source"] != args.source: raise ValueError("Source changed after lock")
+    if lock["status"] != "locked_verified": raise ValueError("测试需要已核验且已锁定的实验协议")
+    if lock["source"] != args.source: raise ValueError("锁定后数据来源发生变化")
     checks = ((DESIGN / "评估条件清单.jsonl", lock["condition_sha256"]),
               (DESIGN / "实验协议.json", lock["protocol_sha256"]), (ALIGNED, lock["data_sha256"]))
     for path, digest in checks:
-        if sha_file(path) != digest: raise ValueError(f"Changed after lock: {path}")
+        if sha_file(path) != digest: raise ValueError(f"锁定后文件发生变化： {path}")
     for name, digest in lock["code_sha256"].items():
-        if sha_file(Path(__file__).parent / name) != digest: raise ValueError(f"Code changed after lock: {name}")
-    if sha_file(args.text_cache) != lock["text_cache_sha256"]: raise ValueError("Text cache changed after lock")
+        if sha_file(Path(__file__).parent / name) != digest: raise ValueError(f"锁定后代码发生变化： {name}")
+    if sha_file(args.text_cache) != lock["text_cache_sha256"]: raise ValueError("锁定后文本缓存发生变化")
     for name, digest in lock["checkpoint_sha256"].items():
-        if sha_file(args.out / "checkpoints" / name) != digest: raise ValueError(f"Checkpoint changed: {name}")
+        if sha_file(args.out / "checkpoints" / name) != digest: raise ValueError(f"检查点发生变化： {name}")
 
 
 def run_test(args):
@@ -151,7 +151,7 @@ def run_test(args):
             metric_path = args.out / "metrics" / f"{run_id}_test_{suite}.json"
             pred_path = args.out / "predictions" / f"{run_id}_test_{suite}.csv.gz"
             if metric_path.exists() and pred_path.exists():
-                print(f"skip {run_id} {suite}", flush=True); continue
+                print(f"跳过 {run_id} {suite}", flush=True); continue
             metric_path.parent.mkdir(parents=True, exist_ok=True); pred_path.parent.mkdir(parents=True, exist_ok=True)
             summary = []
             with gzip.open(pred_path, "wt", newline="", encoding="utf-8") as f:
@@ -180,15 +180,16 @@ def run_test(args):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("stage", choices=["pilot", "core", "select", "test"])
-    ap.add_argument("--source", choices=["verified", "precomputed"], default="verified")
-    ap.add_argument("--text-cache", type=Path)
-    ap.add_argument("--out", type=Path, default=ROOT / "outputs" / "official")
-    ap.add_argument("--device", default="cpu")
-    ap.add_argument("--threads", type=int, default=4)
-    ap.add_argument("--batch-size", type=int, default=32)
-    ap.add_argument("--epochs", type=int, default=50)
-    ap.add_argument("--min-epochs", type=int, default=10)
+    ap.add_argument("stage", choices=["pilot", "core", "select", "test"], help="预搜索、正式训练、选模或测试")
+    ap.add_argument("--source", choices=["verified", "precomputed"], default="verified",
+                    help="文本来源：已核验缓存或临时预计算特征")
+    ap.add_argument("--text-cache", type=Path, help="已核验的文本特征缓存路径")
+    ap.add_argument("--out", type=Path, default=ROOT / "outputs" / "official", help="输出目录")
+    ap.add_argument("--device", default="cpu", help="计算设备，例如 cpu 或 cuda")
+    ap.add_argument("--threads", type=int, default=4, help="CPU 线程数")
+    ap.add_argument("--batch-size", type=int, default=32, help="批量大小")
+    ap.add_argument("--epochs", type=int, default=50, help="最多训练轮数")
+    ap.add_argument("--min-epochs", type=int, default=10, help="最少训练轮数")
     args = ap.parse_args(); verify_config(args)
     torch.set_num_threads(args.threads)
     {"pilot": run_pilot, "core": run_core, "select": run_select, "test": run_test}[args.stage](args)

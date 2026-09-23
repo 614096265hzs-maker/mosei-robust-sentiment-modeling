@@ -1,8 +1,8 @@
-"""Q1: forced alignment and independently defined video/audio/text features.
+"""Q1：强制对齐并提取独立定义的视频、音频和文本特征。
 
-Requires ffmpeg plus requirements-q1.txt. The resulting features are self-built
-and are deliberately not treated as attachment-2's 768/74/35 representation.
-Every one of the 100 records receives a success/partial/failed status.
+需要 ffmpeg 和 requirements-q1.txt。得到的特征由本方案定义，
+不视作附件2的 768/74/35 维同源表示。
+100 条记录分别标记成功、部分成功或失败状态。
 """
 from __future__ import annotations
 
@@ -36,7 +36,7 @@ def align_words(wav: Path, text: str, duration: float, aligner, metadata, device
 
 
 def map_words(expected: list[str], aligned: list[dict], duration: float):
-    """Order-preserving exact normalized token match; unmatched words remain null."""
+    """按顺序对标准化词元做精确匹配；未匹配的词保持空值。"""
     import re
     from difflib import SequenceMatcher
     normalize = lambda s: re.sub(r"[^a-z0-9]+", "", str(s).lower())
@@ -54,7 +54,7 @@ def map_words(expected: list[str], aligned: list[dict], duration: float):
 
 
 def text_word_features(words: list[str], tokenizer, encoder, device: str):
-    """Average subword hidden states. Chunks retain every source word."""
+    """对子词隐藏状态取平均；分块时保留所有原始词。"""
     parts = []
     with torch.no_grad():
         for offset in range(0, len(words), 64):
@@ -63,12 +63,12 @@ def text_word_features(words: list[str], tokenizer, encoder, device: str):
                                 truncation=True, max_length=512)
             word_ids = encoded.word_ids()
             if max((i for i in word_ids if i is not None), default=-1) != len(chunk) - 1:
-                raise ValueError("BERT truncation lost one or more words")
+                raise ValueError("BERT 截断导致一个或多个词丢失")
             input_dict = {k: v.to(device) for k, v in encoded.items()}
             hidden = encoder(**input_dict).last_hidden_state[0].cpu().numpy()
             for i in range(len(chunk)):
                 positions = [j for j, word_id in enumerate(word_ids) if word_id == i]
-                if not positions: raise ValueError(f"No subword for word {offset+i}")
+                if not positions: raise ValueError(f"词语没有对应子词： {offset+i}")
                 parts.append(hidden[positions].mean(axis=0).astype(np.float32))
     return np.stack(parts) if parts else np.empty((0, 768), np.float32)
 
@@ -83,15 +83,15 @@ def audio_frames(wav: Path):
     centroid = librosa.feature.spectral_centroid(y=signal, sr=sr, n_fft=n_fft, hop_length=hop)
     arr = np.vstack((mfcc, rms, zcr, centroid)).T.astype(np.float32)
     times = librosa.frames_to_time(np.arange(len(arr)), sr=sr, hop_length=hop)
-    return times, arr  # 16 self-defined acoustic dimensions
+    return times, arr  # 16 维本方案定义的音频特征
 
 
 def visual_frames(video: Path, sample_hz=5):
     import cv2
     cap = cv2.VideoCapture(str(video))
-    if not cap.isOpened(): raise RuntimeError(f"Cannot decode video: {video}")
+    if not cap.isOpened(): raise RuntimeError(f"无法解码视频： {video}")
     fps = cap.get(cv2.CAP_PROP_FPS)
-    if not np.isfinite(fps) or fps <= 0: raise ValueError("Invalid video FPS")
+    if not np.isfinite(fps) or fps <= 0: raise ValueError("视频帧率无效")
     step = max(1, round(fps / sample_hz))
     frame_id = 0; times = []; rows = []; source_ids = []; prev_gray = None
     try:
@@ -110,8 +110,8 @@ def visual_frames(video: Path, sample_hz=5):
                 prev_gray = gray
             frame_id += 1
     finally: cap.release()
-    if not rows: raise ValueError("No decoded video frames")
-    return np.asarray(times), np.asarray(rows, np.float32), source_ids  # 10 visual dimensions
+    if not rows: raise ValueError("没有成功解码的视频帧")
+    return np.asarray(times), np.asarray(rows, np.float32), source_ids  # 10 维视觉特征
 
 
 def pool_interval(times, features, start, end):
@@ -126,7 +126,7 @@ def pool_interval(times, features, start, end):
 def to_50(words, intervals, text_features, audio_features, visual_features, frame_maps):
     count = len(words)
     size = min(50, count)
-    if size == 0: raise ValueError("No words")
+    if size == 0: raise ValueError("没有可用词语")
     groups = [[] for _ in range(size)]
     for i in range(count): groups[min(size - 1, i * size // count)].append(i)
     tx = np.zeros((50, text_features.shape[1]), np.float32)
@@ -167,7 +167,7 @@ def process_one(record, tokenizer, encoder, aligner, align_meta, device):
         intervals = map_words(words, aligned, record["duration"])
         at, af = audio_frames(wav)
     finally:
-        wav.unlink(missing_ok=True)  # One explicit temporary file.
+        wav.unlink(missing_ok=True)  # 只删除这一明确路径的临时文件。
     vt, vf, frame_ids = visual_frames(video)
     tf = text_word_features(words, tokenizer, encoder, device)
     a_rows = np.full((len(words), af.shape[1]), np.nan, np.float32)
@@ -191,18 +191,18 @@ def process_one(record, tokenizer, encoder, aligner, align_meta, device):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--bert", type=Path, required=True, help="Local BERT model directory; its identity is recorded, not assumed official")
-    ap.add_argument("--device", default="cpu")
-    ap.add_argument("--out", type=Path, default=ROOT / "outputs" / "q1")
+    ap.add_argument("--bert", type=Path, required=True, help="本地 BERT 模型目录；记录其身份，不预设为官方编码器")
+    ap.add_argument("--device", default="cpu", help="计算设备")
+    ap.add_argument("--out", type=Path, default=ROOT / "outputs" / "q1", help="Q1 输出目录")
     args = ap.parse_args()
     try:
         import whisperx
         from transformers import AutoModel, AutoTokenizer
     except ImportError as error:
-        raise RuntimeError("Install requirements-q1.txt first") from error
+        raise RuntimeError("请先安装 requirements-q1.txt") from error
     args.out.mkdir(parents=True, exist_ok=True)
     inventory = args.out / "q1_u_100.jsonl"
-    if not inventory.exists(): raise FileNotFoundError("Run q1_baseline.py first")
+    if not inventory.exists(): raise FileNotFoundError("请先运行 q1_baseline.py")
     records = [json.loads(line) for line in inventory.open(encoding="utf-8")]
     tokenizer = AutoTokenizer.from_pretrained(str(args.bert), use_fast=True, local_files_only=True)
     encoder = AutoModel.from_pretrained(str(args.bert), local_files_only=True).eval().to(args.device)

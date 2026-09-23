@@ -1,7 +1,7 @@
-"""Feature-position occlusion explanations for a locked checkpoint.
+"""对已锁定检查点生成特征位置遮挡解释。
 
-Outputs model-index evidence only; no seconds are fabricated without a verified
-feature-to-video mapping. This is a P-F intervention on precomputed features.
+仅输出模型位置索引证据；没有经过核验的
+特征到视频映射时，不编造秒级时间。这是在预计算特征上的 P-F 干预。
 """
 from __future__ import annotations
 
@@ -99,7 +99,7 @@ def explain_one(model, data: Dataset, idx: int, window: int, random_repeats: int
     by_mod = {k: [i for _, kk, i in selected if kk == k] for k in model.modalities}
     main_mod = max((k for k in model.modalities if available[k]), key=lambda k: mod[k]["distance"], default=None)
     top_segments = {k: contiguous_segments(by_mod[k]) for k in model.modalities}
-    # 20%-budget deletion; random controls preserve the per-modality count.
+    # 删除预算为 20%；随机对照保持各模态删除位置数一致。
     del_edit = {k: by_mod[k] for k in model.modalities}
     pd, yd, _, _ = perturb_batch(model, xs, masks, content, [del_edit])
     deletion = distance(p0, y0, pd[0], float(yd[0]))
@@ -124,19 +124,20 @@ def explain_one(model, data: Dataset, idx: int, window: int, random_repeats: int
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--checkpoint", type=Path, required=True)
-    ap.add_argument("--out", type=Path, default=ROOT / "outputs" / "official")
-    ap.add_argument("--source", choices=["verified", "precomputed"], default="verified")
-    ap.add_argument("--text-cache", type=Path)
-    ap.add_argument("--split", choices=["valid", "test", "a4"], default="a4")
-    ap.add_argument("--window", type=int, choices=[1, 3, 5], default=3)
-    ap.add_argument("--random-repeats", type=int, default=20)
-    ap.add_argument("--device", default="cpu")
-    ap.add_argument("--limit", type=int)
+    ap.add_argument("--checkpoint", type=Path, required=True, help="待解释的模型检查点")
+    ap.add_argument("--out", type=Path, default=ROOT / "outputs" / "official", help="输出目录")
+    ap.add_argument("--source", choices=["verified", "precomputed"], default="verified",
+                    help="文本来源")
+    ap.add_argument("--text-cache", type=Path, help="已核验的文本特征缓存路径")
+    ap.add_argument("--split", choices=["valid", "test", "a4"], default="a4", help="解释的数据划分")
+    ap.add_argument("--window", type=int, choices=[1, 3, 5], default=3, help="遮挡窗口长度")
+    ap.add_argument("--random-repeats", type=int, default=20, help="随机对照重复次数")
+    ap.add_argument("--device", default="cpu", help="计算设备")
+    ap.add_argument("--limit", type=int, help="最多解释的样本数")
     args = ap.parse_args()
     with np.load(args.out / "normalization.npz") as z: norm = {k: z[k] for k in z.files}
     model, cp = load_model(args.checkpoint, norm, args.device)
-    if cp["source"] != args.source: raise ValueError("Checkpoint/source mismatch")
+    if cp["source"] != args.source: raise ValueError("检查点与数据来源不一致")
     if args.split == "a4": data = special_dataset("a4", args.source, args.text_cache, norm)
     else: data = data_bundle(args.source, args.text_cache, ("train", args.split))[0][args.split]
     if args.split in ("valid", "test"):
@@ -151,7 +152,7 @@ def main():
     results = []
     for i in indices:
         results.append(explain_one(model, data, i, args.window, args.random_repeats, args.device))
-        print(f"explained {len(results)}/{len(indices)} {data.ids[i]}", flush=True)
+        print(f"已解释 {len(results)}/{len(indices)} {data.ids[i]}", flush=True)
     path = args.out / "explanations" / f"{args.checkpoint.stem}_{args.split}_w{args.window}.json"
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(results, ensure_ascii=False, indent=2, allow_nan=False), encoding="utf-8")

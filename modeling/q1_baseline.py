@@ -1,7 +1,7 @@
-"""Freeze the 100-video inventory and the Q1-U uniform-time baseline.
+"""冻结 100 条视频清单及 Q1-U 均匀时间基线。
 
-This does not perform forced alignment or extract acoustic/visual features.
-Those stages require a verified aligner and feature extractors.
+此步骤不执行强制对齐，也不提取音频或视觉特征。
+后续步骤需要经核验的对齐模型与特征提取器。
 """
 from __future__ import annotations
 
@@ -47,13 +47,13 @@ def mp4_duration(path: Path) -> float:
                     duration = amount / scale if scale else None
                 cursor += size
         walk(0, path.stat().st_size)
-    if duration is None or duration <= 0: raise ValueError(f"Cannot read MP4 duration: {path}")
+    if duration is None or duration <= 0: raise ValueError(f"无法读取 MP4 时长： {path}")
     return float(duration)
 
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--out", type=Path, default=ROOT / "outputs" / "q1")
+    ap.add_argument("--out", type=Path, default=ROOT / "outputs" / "q1", help="Q1 输出目录")
     args = ap.parse_args()
     wb = openpyxl.load_workbook(VIDEO_ROOT / "label-100.xlsx", read_only=True, data_only=True)
     rows = list(wb["label"].values)
@@ -74,8 +74,8 @@ def main():
                         "q1_u_status": "uniform_approximation", "forced_alignment_status": "not_run",
                         "audio_feature_status": "not_run", "vision_feature_status": "not_run"})
     if len(records) != 100 or len({r["sample_id"] for r in records}) != 100:
-        raise ValueError("Expected 100 unique source videos")
-    # Freeze the evaluation audit before checking any alignment output.
+        raise ValueError("源视频应有 100 条且编号互不重复")
+    # 检查任何对齐结果之前，先冻结评价审计样本。
     sorted_records = sorted(records, key=lambda r: (r["duration"], r["sample_id"]))
     strata = [sorted_records[:33], sorted_records[33:67], sorted_records[67:]]
     rng = random.Random(20260923)
@@ -85,7 +85,7 @@ def main():
         chosen = [r for r in shuffled if r["video_id"] not in used_videos][:quota]
         if len(chosen) < quota:
             chosen.extend([r for r in shuffled if r not in chosen][:quota - len(chosen)])
-        if len(chosen) != quota: raise ValueError("Audit stratum underfilled")
+        if len(chosen) != quota: raise ValueError("审计分层抽样数量不足")
         for r in chosen: used_videos.add(r["video_id"])
         selected.extend({"sample_id": r["sample_id"], "video_id": r["video_id"],
                          "duration": r["duration"], "stratum": label} for r in chosen)

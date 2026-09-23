@@ -1,7 +1,7 @@
-"""Aligned MOSEI experiment runner. Run `python experiment.py --help`.
+"""MOSEI 对齐特征实验入口。运行 `python experiment.py --help`。
 
-The official route requires a verified frozen BERT cache made by `encode`.
-`--source precomputed` is an explicitly provisional route for attachment 2/4.
+正式实验必须先通过 `encode` 生成并核验冻结的 BERT 文本缓存。
+`--source precomputed` 仅供附件2和附件4的临时调试。
 """
 from __future__ import annotations
 
@@ -45,8 +45,8 @@ MODELS = {
 
 
 def load_pickle(path: Path):
-    # Some specialty files were pickled with NumPy 2, while the available
-    # CPU PyTorch environment has NumPy 1. A module alias permits read-only load.
+    # 部分专项文件由 NumPy 2 序列化，而当前
+    # CPU PyTorch 环境使用 NumPy 1；模块别名用于只读加载。
     import numpy.core as core
     sys.modules.setdefault("numpy._core", core)
     sys.modules.setdefault("numpy._core.numeric", core.numeric)
@@ -108,10 +108,10 @@ def load_text_cache(path: Path, split: str, n: int) -> np.ndarray:
     with np.load(path, mmap_mode="r") as z:
         key = f"{split}_text"
         if key not in z:
-            raise ValueError(f"Text cache missing {key}: {path}")
+            raise ValueError(f"文本缓存缺少 {key}: {path}")
         x = np.array(z[key], dtype=np.float32)
     if x.shape != (n, 50, 768):
-        raise ValueError(f"Incorrect text shape {x.shape} for {split}")
+        raise ValueError(f"{split} 的文本特征形状错误：{x.shape}")
     return x
 
 
@@ -125,7 +125,7 @@ class Dataset:
         for k in KEYS:
             raw = np.asarray(text if k == "T" else split[FEATURES[k]], dtype=np.float32)
             if raw.shape != (len(self.ids), 50, DIMS[k]):
-                raise ValueError(f"{name} {k} shape {raw.shape}")
+                raise ValueError(f"{name} {k} 形状为 {raw.shape}，与预期不符")
             avail = self.c if k == "T" else self.c & np.any(raw != 0, axis=2)
             self.uncertain[k] = self.c & ~avail if k != "T" else np.zeros_like(self.c)
             self.o[k] = avail
@@ -136,7 +136,7 @@ class Dataset:
         self.y_cls = np.asarray(split.get("classification_labels", np.full(len(self.ids), -1)), dtype=np.int64)
         self.y_reg = np.asarray(split.get("regression_labels", np.full(len(self.ids), np.nan)), dtype=np.float32)
         if len(set(self.ids)) != len(self.ids):
-            raise ValueError(f"Duplicate IDs in {name}")
+            raise ValueError(f"{name} 中存在重复编号")
 
     def __len__(self): return len(self.ids)
 
@@ -311,10 +311,10 @@ def predict(model, data, condition=None, batch_size=64, device="cpu", rows=False
 def data_bundle(source, cache, splits=("train", "valid")):
     raw = load_pickle(ALIGNED)
     if source == "verified":
-        if not cache: raise ValueError("Verified mode requires --text-cache from encode")
+        if not cache: raise ValueError("已核验模式需要 encode 生成的 --text-cache")
         meta = json.loads(cache.with_suffix(".json").read_text(encoding="utf-8"))
         if not meta.get("verified") or meta.get("data_sha256") != sha_file(ALIGNED):
-            raise ValueError("Text cache verification or data hash failed")
+            raise ValueError("文本缓存核验或数据哈希检查失败")
         texts = {s: load_text_cache(cache, s, len(raw[s]["id"])) for s in splits}
     else:
         texts = {s: raw[s]["text"] for s in splits}
@@ -338,7 +338,7 @@ def train_one(args, datasets, norm, model_id, seed, hidden, lr, dropout, run_nam
     model = Predictor(model_id, hidden, dropout, norm["prior"], norm["reg_mean"]).to(device)
     teacher = None
     if model_id == "D1":
-        if not teacher_path or not teacher_path.exists(): raise ValueError("D1 requires same-seed F01 checkpoint")
+        if not teacher_path or not teacher_path.exists(): raise ValueError("D1 需要相同随机种子的 F01 检查点")
         cp = torch.load(teacher_path, map_location=device, weights_only=False)
         teacher = Predictor("F01", hidden, dropout, norm["prior"], norm["reg_mean"]).to(device)
         teacher.load_state_dict(cp["state"]); teacher.eval()
@@ -375,7 +375,7 @@ def train_one(args, datasets, norm, model_id, seed, hidden, lr, dropout, run_nam
         score = selection_score(evals)
         history.append({"epoch": epoch + 1, "loss": float(np.mean(losses)), "selection_score": score,
                         "clean_macro_f1": evals[0]["macro_f1"], "clean_mae": evals[0]["mae"]})
-        print(f"{run_name} epoch={epoch+1} loss={history[-1]['loss']:.4f} S={score:.4f}", flush=True)
+        print(f"{run_name} 轮次={epoch+1} 损失={history[-1]['loss']:.4f} S={score:.4f}", flush=True)
         if score >= best + 1e-4:
             best = score; stale = 0
             torch.save({"state": model.state_dict(), "model_id": model_id, "hidden": hidden, "dropout": dropout,
@@ -412,22 +412,22 @@ def write_rows(path, rows):
 def run_evaluate(args):
     if args.split == "test":
         lock_path = args.out / "protocol_lock.json"
-        if not lock_path.exists(): raise ValueError("Test evaluation requires protocol_lock.json")
+        if not lock_path.exists(): raise ValueError("测试集评价需要 protocol_lock.json")
         lock = json.loads(lock_path.read_text(encoding="utf-8"))
         if lock.get("status") != "locked_verified" or args.source != "verified":
-            raise ValueError("Test evaluation requires a verified locked protocol")
+            raise ValueError("测试集评价需要已核验且已锁定的实验协议")
         if sha_file(ALIGNED) != lock["data_sha256"]:
-            raise ValueError("Aligned data changed after protocol lock")
+            raise ValueError("协议锁定后，对齐数据发生变化")
         if sha_file(DESIGN / "评估条件清单.jsonl") != lock["condition_sha256"]:
-            raise ValueError("Evaluation conditions changed after protocol lock")
+            raise ValueError("协议锁定后，评价条件发生变化")
         if args.text_cache is None or sha_file(args.text_cache) != lock["text_cache_sha256"]:
-            raise ValueError("Text cache changed after protocol lock")
+            raise ValueError("协议锁定后，文本缓存发生变化")
         if (args.checkpoint.name not in lock["checkpoint_sha256"] or
                 sha_file(args.checkpoint) != lock["checkpoint_sha256"][args.checkpoint.name]):
-            raise ValueError("Checkpoint is not locked")
+            raise ValueError("该检查点未列入锁定协议")
     datasets, norm = data_bundle(args.source, args.text_cache, ("train", args.split))
     model, cp = load_model(args.checkpoint, norm, args.device)
-    if cp["source"] != args.source: raise ValueError("Checkpoint/text source mismatch")
+    if cp["source"] != args.source: raise ValueError("检查点与文本来源不一致")
     data = datasets[args.split]; conditions = read_conditions(args.suite)
     summary = []
     for cond in conditions:
@@ -475,21 +475,21 @@ def run_q0(args):
         assert torch.isfinite(a[0]).all() and torch.isfinite(a[1]).all()
         assert torch.allclose(a[0][-1].softmax(0), torch.from_numpy(prior), atol=1e-6)
         assert abs(float(a[1][-1]) - 0.25) < 1e-6
-    print("Q0 synthetic masking, fallback, finite-output checks passed")
+    print("Q0 合成掩码、回退输出和有限值检查通过")
 
 
 def run_encode(args):
     try:
         from transformers import AutoModel
     except ImportError as e:
-        raise RuntimeError("Install transformers in the selected Python environment") from e
-    if not args.encoder or not args.encoder.is_dir(): raise ValueError("--encoder must be a local model directory")
-    if args.text_cache.suffix.lower() != ".npz": raise ValueError("--text-cache must end in .npz")
+        raise RuntimeError("请在当前 Python 环境中安装 transformers") from e
+    if not args.encoder or not args.encoder.is_dir(): raise ValueError("--encoder 必须指向本地模型目录")
+    if args.text_cache.suffix.lower() != ".npz": raise ValueError("--text-cache 必须以 .npz 结尾")
     model = AutoModel.from_pretrained(str(args.encoder), local_files_only=True, trust_remote_code=False).eval().to(args.device)
-    if getattr(model.config, "hidden_size", None) != 768: raise ValueError("Encoder hidden size must be 768")
+    if getattr(model.config, "hidden_size", None) != 768: raise ValueError("编码器隐藏层维度必须为 768")
     raw = load_pickle(ALIGNED); arrays = {}
     def encode_bert(bert):
-        if not np.all(bert == np.round(bert)): raise ValueError("Noninteger token IDs")
+        if not np.all(bert == np.round(bert)): raise ValueError("词元编号必须为整数")
         parts = []
         for lo in range(0, len(bert), args.batch_size):
             b = torch.as_tensor(bert[lo:lo + args.batch_size], device=args.device, dtype=torch.long)
@@ -503,9 +503,9 @@ def run_encode(args):
             ref = np.asarray(raw[name]["text"], dtype=np.float32)
             active = np.asarray(bert[:, 1, :], dtype=bool)
             mae = float(np.mean(np.abs(arrays[f"{name}_text"][active] - ref[active])))
-            print(f"{name}: encoder/reference active-position MAE={mae:.6g}", flush=True)
+            print(f"{name}: 编码结果与参考特征在有效位置的平均绝对误差={mae:.6g}", flush=True)
             if mae > args.max_mae:
-                raise ValueError(f"Encoder mismatch on {name}: MAE {mae} > {args.max_mae}")
+                raise ValueError(f"{name} 的编码器结果不匹配：平均绝对误差 {mae} > {args.max_mae}")
         for i in range(1, 31):
             name = f"{i:02d}"
             obj = load_pickle(A3 / f"附件3_{name}.pkl")["test"]
@@ -517,7 +517,7 @@ def run_encode(args):
             ref = np.asarray(obj["text"], dtype=np.float32)[None, ...]
             active = np.asarray(obj["text_bert"])[1].astype(bool)[None, ...]
             mae = float(np.mean(np.abs(generated[active] - ref[active])))
-            if mae > args.max_mae: raise ValueError(f"Encoder mismatch on attachment 4 {name}: {mae}")
+            if mae > args.max_mae: raise ValueError(f"附件4编码器结果不匹配 {name}: {mae}")
             arrays[f"a4_{name}_text"] = generated
     args.text_cache.parent.mkdir(parents=True, exist_ok=True)
     np.savez(args.text_cache, **arrays)
@@ -530,7 +530,7 @@ def run_encode(args):
 def special_dataset(kind: str, source: str, cache: Path | None, norm: dict) -> Dataset:
     if kind not in ("a3", "a4"): raise ValueError(kind)
     if kind == "a3" and source != "verified":
-        raise ValueError("Attachment 3 has no precomputed text. A verified encoder/cache is required")
+        raise ValueError("附件3没有预计算文本特征，必须使用已核验的编码器与缓存")
     parts = {"id": [], "text_bert": [], "audio": [], "vision": [], "text": []}
     z = np.load(cache, mmap_mode="r") if source == "verified" else None
     try:
@@ -552,17 +552,17 @@ def special_dataset(kind: str, source: str, cache: Path | None, norm: dict) -> D
 def run_special(args):
     with np.load(args.out / "normalization.npz") as z: norm = {k: z[k] for k in z.files}
     source_info = json.loads((args.out / "data_source.json").read_text(encoding="utf-8"))
-    if args.source != source_info["source"]: raise ValueError("Normalization/source mismatch")
+    if args.source != source_info["source"]: raise ValueError("标准化参数与数据来源不一致")
     if args.source == "verified":
-        if args.text_cache is None or not args.text_cache.exists(): raise ValueError("Verified text cache missing")
+        if args.text_cache is None or not args.text_cache.exists(): raise ValueError("缺少已核验的文本缓存")
         if Path(source_info["text_cache"]).resolve() != args.text_cache.resolve():
-            raise ValueError("Special text cache differs from training cache")
+            raise ValueError("专项集文本缓存与训练缓存不一致")
         meta = json.loads(args.text_cache.with_suffix(".json").read_text(encoding="utf-8"))
         if not meta.get("verified") or meta.get("data_sha256") != source_info["aligned_sha256"]:
-            raise ValueError("Special text cache verification failed")
+            raise ValueError("专项集文本缓存核验失败")
     model, cp = load_model(args.checkpoint, norm, args.device)
-    if cp["source"] != args.source: raise ValueError("Checkpoint/source mismatch")
-    if args.kind == "a3" and args.source != "verified": raise ValueError("Attachment 3 requires verified text encoder")
+    if cp["source"] != args.source: raise ValueError("检查点与数据来源不一致")
+    if args.kind == "a3" and args.source != "verified": raise ValueError("附件3需要已核验的文本编码器")
     data = special_dataset(args.kind, args.source, args.text_cache, norm)
     _, _, _, rows = predict(model, data, batch_size=args.batch_size, device=args.device, rows=True)
     path = args.out / "special" / f"{args.kind}_{args.checkpoint.stem}.csv"
@@ -579,32 +579,50 @@ def run_special(args):
 
 def parse():
     ap = argparse.ArgumentParser(description=__doc__)
-    sub = ap.add_subparsers(dest="command", required=True)
+    sub = ap.add_subparsers(dest="command", required=True, help="选择实验操作")
     for name in ("q0", "b0", "train", "evaluate", "encode", "special"):
-        p = sub.add_parser(name)
+        descriptions = {
+            "q0": "执行合成数据自检",
+            "b0": "计算多数类基线",
+            "train": "训练指定模型",
+            "evaluate": "按条件清单评价模型",
+            "encode": "核验文本编码器并生成缓存",
+            "special": "生成附件3或附件4的专项预测",
+        }
+        p = sub.add_parser(name, help=descriptions[name], description=descriptions[name])
         if name in ("b0", "train", "evaluate", "special"):
-            p.add_argument("--source", choices=["verified", "precomputed"], default="verified")
-            p.add_argument("--text-cache", type=Path)
-            p.add_argument("--out", type=Path, default=ROOT / "outputs" / "official")
+            p.add_argument("--source", choices=["verified", "precomputed"], default="verified",
+                           help="文本来源：已核验缓存或临时预计算特征")
+            p.add_argument("--text-cache", type=Path, help="已核验的文本特征缓存路径")
+            p.add_argument("--out", type=Path, default=ROOT / "outputs" / "official",
+                           help="输出目录")
         if name in ("train", "evaluate", "encode", "special"):
-            p.add_argument("--device", default="cpu")
-            p.add_argument("--batch-size", type=int, default=32)
+            p.add_argument("--device", default="cpu", help="计算设备，例如 cpu 或 cuda")
+            p.add_argument("--batch-size", type=int, default=32, help="批量大小")
         if name == "train":
-            p.add_argument("--model", choices=list(MODELS), required=True); p.add_argument("--seed", type=int, default=17)
-            p.add_argument("--hidden", type=int, choices=[64, 128], default=64); p.add_argument("--lr", type=float, default=3e-4)
-            p.add_argument("--dropout", type=float, choices=[0.1, 0.3], default=0.1)
-            p.add_argument("--epochs", type=int, default=50); p.add_argument("--min-epochs", type=int, default=10)
-            p.add_argument("--threads", type=int, default=4); p.add_argument("--run-name")
-            p.add_argument("--teacher", type=Path)
+            p.add_argument("--model", choices=list(MODELS), required=True, help="模型编号")
+            p.add_argument("--seed", type=int, default=17, help="随机种子")
+            p.add_argument("--hidden", type=int, choices=[64, 128], default=64, help="隐藏层维度")
+            p.add_argument("--lr", type=float, default=3e-4, help="学习率")
+            p.add_argument("--dropout", type=float, choices=[0.1, 0.3], default=0.1, help="随机失活比例")
+            p.add_argument("--epochs", type=int, default=50, help="最多训练轮数")
+            p.add_argument("--min-epochs", type=int, default=10, help="最少训练轮数")
+            p.add_argument("--threads", type=int, default=4, help="CPU 线程数")
+            p.add_argument("--run-name", help="本次运行名称")
+            p.add_argument("--teacher", type=Path, help="D1 使用的同种子教师检查点")
         if name == "evaluate":
-            p.add_argument("--checkpoint", type=Path, required=True); p.add_argument("--split", choices=["valid", "test"], default="valid")
-            p.add_argument("--suite", choices=["V-select", "E-main", "E-random"], default="V-select")
-            p.add_argument("--save-predictions", action="store_true")
+            p.add_argument("--checkpoint", type=Path, required=True, help="待评价的模型检查点")
+            p.add_argument("--split", choices=["valid", "test"], default="valid", help="评价数据划分")
+            p.add_argument("--suite", choices=["V-select", "E-main", "E-random"], default="V-select",
+                           help="评价条件组")
+            p.add_argument("--save-predictions", action="store_true", help="保存逐样本预测")
         if name == "encode":
-            p.add_argument("--encoder", type=Path, required=True); p.add_argument("--text-cache", type=Path, required=True)
-            p.add_argument("--max-mae", type=float, default=1e-3)
+            p.add_argument("--encoder", type=Path, required=True, help="本地候选文本编码器目录")
+            p.add_argument("--text-cache", type=Path, required=True, help="核验通过后的缓存输出路径")
+            p.add_argument("--max-mae", type=float, default=1e-3, help="允许的最大平均绝对误差")
         if name == "special":
-            p.add_argument("--checkpoint", type=Path, required=True); p.add_argument("--kind", choices=["a3", "a4"], required=True)
+            p.add_argument("--checkpoint", type=Path, required=True, help="选定的模型检查点")
+            p.add_argument("--kind", choices=["a3", "a4"], required=True, help="专项附件编号")
     return ap.parse_args()
 
 

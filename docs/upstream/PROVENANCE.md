@@ -1,6 +1,5 @@
-# Upstream provenance
+# 来源说明
 
-This repository was adapted from [HPUhushicheng/MSA-Challenge-The-4th-Pazhou-AI-Competition](https://github.com/HPUhushicheng/MSA-Challenge-The-4th-Pazhou-AI-Competition), cloned at commit `9734c1c` (`Update README.md`). The original Apache-2.0 `LICENSE` and original code remain in the repository. Copies of the original entry documentation are in this directory.
+本仓库基于 [HPUhushicheng/MSA-Challenge-The-4th-Pazhou-AI-Competition](https://github.com/HPUhushicheng/MSA-Challenge-The-4th-Pazhou-AI-Competition) 改造，克隆时对应提交 `9734c1c`。原项目代码与 Apache-2.0 许可证保留在仓库中；原版中英文入口文档存放于本目录，供核对来源。
 
-The added `modeling/` and `protocol/` material targets the separate MOSEI missing-modality modeling problem. It is not a reproduction of the upstream leaderboard result and has not been trained as part of this adaptation.
-
+新增的 `modeling/` 与 `protocol/` 面向另一项 MOSEI 缺失模态建模题。它不是原项目榜单结果的复现；截至本次改造，尚未执行正式训练或评价。

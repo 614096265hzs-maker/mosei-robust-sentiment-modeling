@@ -1,8 +1,8 @@
-"""Join Q3 occlusion results with the separately audited attachment-4 map.
+"""将 Q3 遮挡结果与单独审计的附件4映射合并。
 
-Only text segments with full approximate token timing receive time bounds.
-Audio/visual segments retain feature indices until their extraction mapping is
-independently verified. This script never invents exact seconds or labels.
+只有词元近似时间完整的文本片段才填写时间范围。
+音频和视觉片段先保留特征索引，待提取过程的映射
+独立核验后再处理；脚本不编造精确秒数或标签。
 """
 from __future__ import annotations
 
@@ -19,17 +19,18 @@ OVERLAP = {"03", "07", "08", "12", "15"}
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--explanations", type=Path, required=True)
-    ap.add_argument("--mapping", type=Path, required=True)
-    ap.add_argument("--out", type=Path, default=ROOT / "outputs" / "official" / "explanations")
+    ap.add_argument("--explanations", type=Path, required=True, help="遮挡解释 JSON 路径")
+    ap.add_argument("--mapping", type=Path, required=True, help="附件4时间映射 JSON 路径")
+    ap.add_argument("--out", type=Path, default=ROOT / "outputs" / "official" / "explanations",
+                    help="解释卡输出目录")
     args = ap.parse_args()
     explanations = json.loads(args.explanations.read_text(encoding="utf-8"))
     mapping = {x["sample_id"]: x for x in json.loads(args.mapping.read_text(encoding="utf-8"))}
-    if len(explanations) != 20 or len(mapping) != 20: raise ValueError("Attachment 4 requires 20 records")
+    if len(explanations) != 20 or len(mapping) != 20: raise ValueError("附件4必须包含 20 条记录")
     cards = []
     for record in explanations:
         sample_id = record["sample_id"]
-        if sample_id not in mapping: raise ValueError(f"Missing mapping: {sample_id}")
+        if sample_id not in mapping: raise ValueError(f"缺少映射： {sample_id}")
         word_map = {x["feature_position"]: x for x in mapping[sample_id]["token_positions"]}
         evidence = []
         for modality, segments in record["top20_percent_segments_exclusive_end"].items():

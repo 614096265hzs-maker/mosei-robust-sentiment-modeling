@@ -76,7 +76,7 @@ class CustomDataset(Dataset):
             # 音频增强
             if self.mode == 'train':
                 audio_segment = self.augment_audio(audio_segment)
-            # decibel normalization
+            # 分贝归一化
             if self._use_dB_normalization:
                 audio_segment.normalize(target_db=self._target_dB)
             # 裁剪需要的数据
